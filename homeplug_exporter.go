@@ -100,9 +100,9 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) error {
 
     for _, station := range info.Stations {
       ch <- prometheus.MustNewConstMetric(e.txRate, prometheus.GaugeValue,
-            float64(station.TxRate * 1024 * 1024), station.Address.String(), strconv.FormatInt(int64(station.TEI), 10))
+            float64(station.TxRate) * 1024 * 1024, station.Address.String(), strconv.FormatInt(int64(station.TEI), 10))
       ch <- prometheus.MustNewConstMetric(e.rxRate, prometheus.GaugeValue,
-            float64(station.RxRate * 1024 * 1024), station.Address.String(), strconv.FormatInt(int64(station.TEI), 10))
+            float64(station.RxRate) * 1024 * 1024, station.Address.String(), strconv.FormatInt(int64(station.TEI), 10))
     }
   }
   return nil
