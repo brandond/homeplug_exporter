@@ -31,7 +31,7 @@ var (
 	nwInfoCnf        = [...]byte{0xA0, 0x39}
 	hpVendor         = [...]byte{0x00, 0xB0, 0x52}
 
-	listeningAddress = kingpin.Flag("telemetry.address", "Address on which to expose metrics.").Default(":9117").String()
+	listeningAddress = kingpin.Flag("telemetry.address", "Address on which to expose metrics.").Default(":9702").String()
   metricsEndpoint  = kingpin.Flag("telemetry.endpoint", "Path under which to expose metrics.").Default("/metrics").String()
 	interfaceName    = kingpin.Flag("interface", "Interface to search for Homeplug devices.").String()
 	destAddress      = kingpin.Flag("destaddr", "Destination MAC address for Homeplug devices.").Default("00B052000001").HexBytes()
