@@ -256,7 +256,7 @@ func main() {
   prometheus.MustRegister(exporter)
   prometheus.MustRegister(version.NewCollector("homeplug_exporter"))
 
-  log.Infof("Collecting from interface %v with MAC address %v", iface.Name, dest)
+  log.Infof("Collecting from MAC address %s via interface %s", dest.String(), iface.Name)
   log.Infof("Starting Server: %s", *listeningAddress)
 
   http.Handle(*metricsEndpoint, promhttp.Handler())
