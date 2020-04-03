@@ -1,8 +1,8 @@
-FROM golang:1.14.1-alpine AS builder
+FROM golang:1.14-buster AS builder
 COPY ./ /go/src/github.com/brandond/homeplug_exporter/
 WORKDIR /go/src/github.com/brandond/homeplug_exporter/
-RUN go build homeplug_exporter.go
+RUN make
 
-FROM golang:1.14.1-alpine
+FROM scratch
 COPY --from=builder /go/src/github.com/brandond/homeplug_exporter /go/bin/
 ENTRYPOINT ["/go/bin/homeplug_exporter"]
