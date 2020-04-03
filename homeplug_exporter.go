@@ -54,12 +54,12 @@ func NewExporter(iface *net.Interface, conn *raw.Conn, dest net.HardwareAddr) *E
     conn:   conn,
     dest:   dest,
     txRate: prometheus.NewDesc(
-      prometheus.BuildFQName(namespace, "station", "tx_rate_bytes"),
+      prometheus.BuildFQName(namespace, "station", "tx_rate_megabits"),
       "Average PHY Tx data rate",
       []string{"mac_address", "terminal_equipment_identifier"},
       nil),
     rxRate: prometheus.NewDesc(
-      prometheus.BuildFQName(namespace, "station", "rx_rate_bytes"),
+      prometheus.BuildFQName(namespace, "station", "rx_rate_megabits"),
       "Average PHY Rx data rate",
       []string{"mac_address", "terminal_equipment_identifier"},
       nil),
@@ -100,9 +100,9 @@ func (e *Exporter) collect(ch chan<- prometheus.Metric) error {
 
     for _, station := range info.Stations {
       ch <- prometheus.MustNewConstMetric(e.txRate, prometheus.GaugeValue,
-            float64(station.TxRate) * 1024 * 1024, station.Address.String(), strconv.FormatInt(int64(station.TEI), 10))
+            float64(station.TxRate), station.Address.String(), strconv.FormatInt(int64(station.TEI), 10))
       ch <- prometheus.MustNewConstMetric(e.rxRate, prometheus.GaugeValue,
-            float64(station.RxRate) * 1024 * 1024, station.Address.String(), strconv.FormatInt(int64(station.TEI), 10))
+            float64(station.RxRate), station.Address.String(), strconv.FormatInt(int64(station.TEI), 10))
     }
   }
   return nil
