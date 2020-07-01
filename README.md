@@ -47,8 +47,8 @@ docker run --rm --detach --name=homeplug_exporter --net=host brandond/homeplug_e
 # TYPE homeplug_exporter_build_info gauge
 # HELP homeplug_network_id Logical network information
 # TYPE homeplug_network_id gauge
-# HELP homeplug_station_rx_rate_megabits Average PHY Rx data rate
-# TYPE homeplug_station_rx_rate_megabits gauge
-# HELP homeplug_station_tx_rate_megabits Average PHY Tx data rate
-# TYPE homeplug_station_tx_rate_megabits gauge
+# HELP homeplug_station_rx_rate_bytes Average PHY Rx data rate
+# TYPE homeplug_station_rx_rate_bytes gauge
+# HELP homeplug_station_tx_rate_bytes Average PHY Tx data rate
+# TYPE homeplug_station_tx_rate_bytes gauge
 ```
