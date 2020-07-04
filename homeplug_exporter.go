@@ -30,6 +30,7 @@ var (
   nwInfoReq        = [...]byte{0xA0, 0x38}
   nwInfoCnf        = [...]byte{0xA0, 0x39}
   hpVendor         = [...]byte{0x00, 0xB0, 0x52}
+  stRole           = [...]string{"STA", "PCO", "CCO"}
 
   listeningAddress = kingpin.Flag("telemetry.address", "Address on which to expose metrics.").Default(":9702").String()
   metricsEndpoint  = kingpin.Flag("telemetry.endpoint", "Path under which to expose metrics.").Default("/metrics").String()
@@ -126,6 +127,7 @@ func (n *HomeplugNetworkInfo) UnmarshalBinary(b []byte) error {
       return err
     }
     n.Networks = append(n.Networks, ns)
+    log.Debugf("Network found: %s", &ns)
     o += size
   }
 
@@ -138,6 +140,7 @@ func (n *HomeplugNetworkInfo) UnmarshalBinary(b []byte) error {
       return err
     }
     n.Stations = append(n.Stations, ss)
+    log.Debugf("Station found: %s", &ss)
     o += size
   }
 
@@ -151,6 +154,13 @@ type HomeplugNetworkStatus struct {
   Role       uint8
   CCoAddress net.HardwareAddr
   CCoTEI     uint8
+}
+
+func (s *HomeplugNetworkStatus) String() string {
+  role := stRole[s.Role]
+  return fmt.Sprintf(
+    "NID: %s, SNID: %x, TEI: %d, Role: %s, CCo: %s, CCoTEI: %d",
+    s.NetworkID, s.ShortID, s.TEI, role, s.CCoAddress, s.CCoTEI)
 }
 
 func (s *HomeplugNetworkStatus) UnmarshalBinary(b []byte) (int, error) {
@@ -172,6 +182,12 @@ type HomeplugStationStatus struct {
   BridgedAddress net.HardwareAddr
   TxRate         uint8
   RxRate         uint8
+}
+
+func (s *HomeplugStationStatus) String() string {
+  return fmt.Sprintf(
+    "MAC: %s, TEI: %d, BDA: %s, RX: %d Mbit/s, TX: %d Mbit/s",
+    s.Address, s.TEI, s.BridgedAddress, s.RxRate, s.TxRate)
 }
 
 func (s *HomeplugStationStatus) UnmarshalBinary(b []byte) (int, error) {
