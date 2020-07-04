@@ -38,7 +38,8 @@ var (
 	listeningAddress = kingpin.Flag("telemetry.address", "Address on which to expose metrics.").Default(":9702").String()
 	metricsEndpoint  = kingpin.Flag("telemetry.endpoint", "Path under which to expose metrics.").Default("/metrics").String()
 	interfaceName    = kingpin.Flag("interface", "Interface to search for Homeplug devices.").String()
-	destAddress      = kingpin.Flag("destaddr", "Destination MAC address for Homeplug devices.").Default("00B052000001").HexBytes()
+	destAddress      = MacAddress(kingpin.Flag("destaddr", "Destination MAC address for Homeplug devices. Accepts 'local', 'all', and 'broadcast' as aliases.").
+				Default("local").HintOptions("local", "all", "broadcast"))
 
 	logger log.Logger
 )
@@ -150,7 +151,7 @@ func (n *HomeplugNetworkInfo) UnmarshalBinary(b []byte) error {
 }
 
 type HomeplugNetworkStatus struct {
-	NetworkID  [7]byte
+	NetworkID  net.HardwareAddr
 	ShortID    uint8
 	TEI        uint8
 	Role       uint8
@@ -162,7 +163,7 @@ func (s *HomeplugNetworkStatus) UnmarshalBinary(b []byte) (int, error) {
 	if len(b) < 17 {
 		return 0, io.ErrUnexpectedEOF
 	}
-	copy(s.NetworkID[:], b[0:7])
+	s.NetworkID = b[0:7]
 	s.ShortID = b[7]
 	s.TEI = b[8]
 	s.Role = b[9]
