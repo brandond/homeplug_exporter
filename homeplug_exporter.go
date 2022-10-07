@@ -9,11 +9,15 @@ import (
   "strconv"
   "errors"
   "net/http"
+  "os"
   "encoding/hex"
 
+  "github.com/go-kit/log"
+  "github.com/go-kit/log/level"
   "github.com/prometheus/client_golang/prometheus"
   "github.com/prometheus/client_golang/prometheus/promhttp"
-  "github.com/prometheus/common/log"
+  "github.com/prometheus/common/promlog"
+  "github.com/prometheus/common/promlog/flag"
   "github.com/prometheus/common/version"
   "gopkg.in/alecthomas/kingpin.v2"
   "github.com/mdlayher/ethernet"
@@ -35,6 +39,8 @@ var (
   metricsEndpoint  = kingpin.Flag("telemetry.endpoint", "Path under which to expose metrics.").Default("/metrics").String()
   interfaceName    = kingpin.Flag("interface", "Interface to search for Homeplug devices.").String()
   destAddress      = kingpin.Flag("destaddr", "Destination MAC address for Homeplug devices.").Default("00B052000001").HexBytes()
+
+  logger log.Logger
 )
 
 type Exporter struct {
@@ -82,7 +88,7 @@ func (e *Exporter) Collect (ch chan<- prometheus.Metric) {
   defer e.mutex.Unlock()
   err := e.collect(ch)
   if err != nil {
-    log.Errorf("Error scraping Homeplug: %v", err)
+    level.Error(logger).Log("msg", "error scraping Homeplug", "err", err)
   }
 }
 
@@ -232,22 +238,28 @@ func (h *HomeplugFrame) UnmarshalBinary(b []byte) error {
 }
 
 func main() {
-  log.AddFlags(kingpin.CommandLine)
+  promlogConfig := &promlog.Config{}
+
+  flag.AddFlags(kingpin.CommandLine, promlogConfig)
   kingpin.Version(version.Print("homeplug_exporter"))
   kingpin.HelpFlag.Short('h')
   kingpin.Parse()
 
-  log.Infoln("Starting homeplug_exporter", version.Info())
-  log.Infoln("Build context", version.BuildContext())
+  logger = promlog.New(promlogConfig)
+
+  level.Info(logger).Log("msg", "Starting homeplug_exporter", "version", version.Info())
+  level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
 
   iface, err := get_interface_or_default(*interfaceName)
   if err != nil {
-    log.Fatalf("failed to get interface: %v", err)
+    level.Error(logger).Log("msg", "failed to get interface", "err", err)
+    os.Exit(1)
   }
 
   conn, err := raw.ListenPacket(iface, etherType, nil)
   if err != nil {
-    log.Fatalf("failed to listen: %v", err)
+    level.Error(logger).Log("msg", "failed to listen", "err", err)
+    os.Exit(1)
   }
 
   dest := net.HardwareAddr((*destAddress)[0:6])
@@ -256,8 +268,8 @@ func main() {
   prometheus.MustRegister(exporter)
   prometheus.MustRegister(version.NewCollector("homeplug_exporter"))
 
-  log.Infof("Collecting from MAC address %s via interface %s", dest.String(), iface.Name)
-  log.Infof("Starting Server: %s", *listeningAddress)
+  level.Info(logger).Log("msg", fmt.Sprintf("Collecting from MAC address %s via interface %s", dest.String(), iface.Name))
+  level.Info(logger).Log("msg", fmt.Sprintf("Starting Server: %s", *listeningAddress))
 
   http.Handle(*metricsEndpoint, promhttp.Handler())
   http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -269,7 +281,11 @@ func main() {
              </body>
              </html>`))
   })
-  log.Fatal(http.ListenAndServe(*listeningAddress, nil))
+
+  if err := http.ListenAndServe(*listeningAddress, nil); err != nil {
+    level.Error(logger).Log("msg", "failed to bind HTTP server", "err", err)
+    os.Exit(1)
+  }
 }
 
 func get_homeplug_netinfo(iface *net.Interface, conn *raw.Conn, dest net.HardwareAddr) ([]HomeplugNetworkInfo, error) {
@@ -290,12 +306,12 @@ ChanLoop:
         var n HomeplugNetworkInfo
         err := (&n).UnmarshalBinary(h.Payload)
         if err != nil{
-          log.Errorf("failed to unmarshal network info frame: %v", err)
+          level.Error(logger).Log("msg", "failed to unmarshal network info frame", "err", err)
         } else {
           ni = append(ni, n)
         }
       } else {
-        log.Errorf("got unhandled mmetype: %v", h.MMEType)
+        level.Error(logger).Log("msg", fmt.Sprintf("got unhandled mmetype: %v", h.MMEType))
       }
     case <- time.After(time.Second):
       break ChanLoop
@@ -348,25 +364,25 @@ func read_homeplug(iface *net.Interface, conn *raw.Conn, ch chan<- HomeplugFrame
       conn.SetReadDeadline(time.Now().Add(time.Second))
       n, addr, err := conn.ReadFrom(b)
       if err != nil {
-        log.Debugf("failed to receive message: %v", err)
+        level.Debug(logger).Log("msg", "failed to receive message", "err", err)
         break
       }
 
       var f ethernet.Frame
       err = (&f).UnmarshalBinary(b[:n])
       if err != nil {
-        log.Errorf("failed to unmarshal ethernet frame: %v", err)
+        level.Error(logger).Log("msg", "failed to unmarshal ethernet frame", "err", err)
         continue
       }
 
       var h HomeplugFrame
       err = (&h).UnmarshalBinary(f.Payload)
       if err != nil {
-        log.Errorf("failed to unmarshal homeplug frame: %v", err)
+        level.Error(logger).Log("msg", "failed to unmarshal homeplug frame", "err",  err)
         continue
       }
 
-      log.Debugf("[%v] %+v", addr, h)
+      level.Debug(logger).Log("msg", fmt.Sprintf("[%v] %+v", addr, h))
       ch <- h
     }
   }
